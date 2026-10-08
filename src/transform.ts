@@ -1,6 +1,7 @@
 import { extname } from 'node:path';
 import { mdsvex } from 'mdsvex';
 import { parse } from 'svelte/compiler';
+import { createExactMappings } from './mappings.ts';
 
 export async function transformSvx(source: string, filename: string) {
   const extension = extname(filename);
@@ -20,6 +21,7 @@ export async function transformSvx(source: string, filename: string) {
   return {
     code: result.code,
     data: result.data ?? {},
-    map: result.map || null
+    map: result.map || null,
+    mappings: createExactMappings(source, result.code)
   };
 }

@@ -16,7 +16,7 @@ bun run typecheck
 ```
 
 Pass another `.svx` file with `bun run probe path/to/file.svx`. The command
-prints the generated Svelte, MDsveX data, and whether it supplied a source map.
+prints the generated Svelte, MDsveX data, source spans, and whether it supplied a source map.
 It also parses the output with the Svelte compiler, including Svelte 5 syntax.
 
 ## Try the VS Code syntax extension
@@ -32,7 +32,7 @@ This extension currently highlights Markdown and `<script>`/`<style>` blocks.
 It does not yet provide Svelte expressions, component completion, diagnostics,
 or formatting.
 
-## Next experiment
+## Position mapping
 
 MDsveX 0.12.8 returns `{ code, data, map }`. `data.fm` contains parsed
 frontmatter when present. Its source code currently sets `map: ''` for every
@@ -41,9 +41,10 @@ preprocessor. Svelte `preprocess()` consequently returns `map: null`. The
 Svelte compiler can produce a JavaScript source map, but its source content
 is the generated Svelte, not the original SVX.
 
-Before routing Svelte language-server diagnostics or edits into SVX, we need
-a mapping from generated Svelte positions to original SVX positions. A first
-version could map unchanged script and Svelte markup ranges, leaving generated
-Markdown ranges unmapped. Frontmatter, layouts, and plugins need separate
-checks. Zed support will also need a grammar that represents Markdown and
-Svelte syntax in the same file.
+The prototype now finds exact, unique matches for `<script>` and `<style>` blocks whose opening tag is on one line, raw tag lines, and standalone Svelte expressions or block
+directives outside Markdown fences. `mapGeneratedRange` translates an offset range only when it lies entirely within one such span;
+it returns `null` for generated Markdown, frontmatter, changed content, and
+ambiguous matches. These are conservative prototype mappings, not a full
+source map. They use default MDsveX settings; custom plugins and layouts need
+validation before relying on them for editor diagnostics or edits. Zed also
+needs a grammar that represents Markdown and Svelte syntax in the same file.
