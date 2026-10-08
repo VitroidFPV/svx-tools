@@ -11,7 +11,9 @@
   "dependencies": {
     "mdsvex": "^0.12.8",
     "svelte": "^5.0.0",
-    "svelte-language-server": "^0.18.4"
+    "svelte-language-server": "^0.18.4",
+    "vscode-languageserver": "^10.1.2",
+    "vscode-languageserver-textdocument": "^1.0.15"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

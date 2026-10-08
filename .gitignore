@@ -1,2 +1,5 @@
 node_modules/
 editors/vscode/dist/
+editors/zed/target/
+editors/zed/extension.wasm
+editors/zed/grammars/

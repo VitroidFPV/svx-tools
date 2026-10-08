@@ -2,8 +2,8 @@
 
 This is an early experiment toward MDsveX language support in VS Code and Zed.
 It checks the MDsveX-to-Svelte handoff and provides basic `.svx` recognition,
-highlighting, and diagnostics for VS Code and compatible editors. There is no
-standalone language server yet.
+highlighting, and diagnostics for VS Code and compatible editors. A small LSP
+server now exposes diagnostics to Zed.
 
 ## Run the transformation probe
 
@@ -40,12 +40,29 @@ development window after rebuilding. Open `fixtures/error.svx`: it should show
 four errors (a script type mismatch and three missing names) plus an image
 accessibility warning. The diagnostics should point to the original SVX lines.
 
-The extension highlights Markdown and `<script>`/`<style>` blocks. Diagnostics
-come from Svelte's checking API and are shown only when their generated ranges
-map exactly to the SVX source. For files without a script, the virtual Svelte
-document enables JavaScript checking; files with a JavaScript script still
-follow that script's checking settings. Completion, formatting, broader source
-mapping, and Zed integration remain future work.
+The VS Code extension highlights Markdown and `<script>`/`<style>` blocks.
+Diagnostics come from Svelte's checking API and are shown only when their
+generated ranges map exactly to the SVX source. For files without a script,
+the virtual Svelte document enables JavaScript checking; files with a
+JavaScript script still follow that script's checking settings.
+
+## Try the Zed extension
+
+Install dependencies with `bun install` from the repository root. Launch Zed
+from a shell where `bun` is available on `PATH` (for example, `zed .`). Use
+**Extensions → Install Dev Extension** and select `editors/zed`. Open the
+`svx-tools` repository as the worktree, then open `fixtures/error.svx`. The
+file should be recognized as SVX and show the same four errors and one warning.
+After using **Rebuild Extension**, close and reopen the `.svx` file. If the
+diagnostics remain absent, restart Zed; an extension reload can stop the active
+language server without restarting it for an already open file.
+
+This local prototype launches `scripts/lsp.ts` from the open worktree, so it
+currently works when the worktree is this repository. Zed also needs Rust to
+compile the extension. Install Zed's Svelte extension for highlighting inside
+raw Svelte blocks. The SVX grammar also highlights Markdown inline content and
+injects languages into fenced code blocks. Completion, formatting, and broader
+source mapping remain future work for both editors.
 
 ## Position mapping
 

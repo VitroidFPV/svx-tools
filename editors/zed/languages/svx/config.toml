@@ -1,0 +1,4 @@
+name = "SVX"
+grammar = "markdown"
+path_suffixes = ["svx"]
+tab_size = 2

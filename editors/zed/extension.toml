@@ -1,0 +1,16 @@
+id = "svx"
+name = "SVX"
+version = "0.0.1"
+schema_version = 1
+authors = ["VitroidFPV"]
+description = "Early MDsveX language support"
+repository = "https://github.com/VitroidFPV/svx-tools"
+
+[grammars.markdown]
+repository = "https://github.com/zed-industries/tree-sitter-markdown"
+rev = "b596e737286780d7bfa9fcddceaeeb754574b352"
+path = "tree-sitter-markdown"
+
+[language_servers.svx-language-server]
+name = "SVX Language Server"
+languages = ["SVX"]
