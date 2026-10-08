@@ -4,10 +4,18 @@
     "module": "Preserve",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "types": ["bun"],
+    "types": [
+      "bun",
+      "vscode"
+    ],
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "test/**/*.ts",
+    "editors/vscode/src/**/*.ts"
+  ]
 }

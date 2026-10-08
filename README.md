@@ -1,8 +1,9 @@
 # SVX tools prototype
 
 This is an early experiment toward MDsveX language support in VS Code and Zed.
-It currently checks the MDsveX-to-Svelte handoff and provides basic `.svx`
-recognition and highlighting for VS Code. There is no language server yet.
+It checks the MDsveX-to-Svelte handoff and provides basic `.svx` recognition,
+highlighting, and diagnostics for VS Code and compatible editors. There is no
+standalone language server yet.
 
 ## Run the transformation probe
 
@@ -19,7 +20,14 @@ Pass another `.svx` file with `bun run probe path/to/file.svx`. The command
 prints the generated Svelte, MDsveX data, source spans, and whether it supplied a source map.
 It also parses the output with the Svelte compiler, including Svelte 5 syntax.
 
-## Try the VS Code syntax extension
+## Try the VS Code extension
+
+Install dependencies and build the extension from the repository root:
+
+```sh
+bun install
+bun run build:vscode
+```
 
 With the VS Code CLI available, launch an Extension Development Host:
 
@@ -27,10 +35,16 @@ With the VS Code CLI available, launch an Extension Development Host:
 code --extensionDevelopmentPath="$(pwd)/editors/vscode" .
 ```
 
-Open `fixtures/basic.svx` in that window.
-This extension currently highlights Markdown and `<script>`/`<style>` blocks.
-It does not yet provide Svelte expressions, component completion, diagnostics,
-or formatting.
+Cursor can use `editors/vscode` as its extension development path. Reload the
+development window after rebuilding. Open `fixtures/error.svx`: the
+`missingHandler` expression should have a `Cannot find name` diagnostic.
+
+The extension highlights Markdown and `<script>`/`<style>` blocks. Diagnostics
+come from Svelte's checking API and are shown only when their generated ranges
+map exactly to the SVX source. For files without a script, the virtual Svelte
+document enables JavaScript checking; files with a JavaScript script still
+follow that script's checking settings. Completion, formatting, broader source
+mapping, and Zed integration remain future work.
 
 ## Position mapping
 

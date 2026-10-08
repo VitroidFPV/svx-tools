@@ -1,17 +1,26 @@
 {
   "name": "svx-language-prototype",
   "displayName": "SVX Language Prototype",
-  "description": "Early syntax support for MDsveX files",
+  "description": "Early syntax and diagnostic support for MDsveX files",
   "version": "0.0.1",
   "private": true,
-  "engines": { "vscode": "^1.80.0" },
-  "categories": ["Programming Languages"],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
   "contributes": {
     "languages": [
       {
         "id": "svx",
-        "aliases": ["SVX", "svx"],
-        "extensions": [".svx"],
+        "aliases": [
+          "SVX",
+          "svx"
+        ],
+        "extensions": [
+          ".svx"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -22,5 +31,9 @@
         "path": "./syntaxes/svx.tmLanguage.json"
       }
     ]
-  }
+  },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:svx"
+  ]
 }
