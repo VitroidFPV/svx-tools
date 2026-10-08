@@ -1,3 +1,12 @@
+<script lang="ts">
+  const count: number = 'not a number';
+</script>
+
 # Introduction
 
 <button onclick={missingHandler}>Click</button>
+<p>{count + missingValue}</p>
+{missingStandalone}
+<img src="example.png">
+
+This Markdown is here to check that generated markup does not shift the reported ranges.

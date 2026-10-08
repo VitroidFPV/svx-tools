@@ -36,8 +36,9 @@ code --extensionDevelopmentPath="$(pwd)/editors/vscode" .
 ```
 
 Cursor can use `editors/vscode` as its extension development path. Reload the
-development window after rebuilding. Open `fixtures/error.svx`: the
-`missingHandler` expression should have a `Cannot find name` diagnostic.
+development window after rebuilding. Open `fixtures/error.svx`: it should show
+four errors (a script type mismatch and three missing names) plus an image
+accessibility warning. The diagnostics should point to the original SVX lines.
 
 The extension highlights Markdown and `<script>`/`<style>` blocks. Diagnostics
 come from Svelte's checking API and are shown only when their generated ranges
