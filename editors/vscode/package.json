@@ -1,0 +1,26 @@
+{
+  "name": "svx-language-prototype",
+  "displayName": "SVX Language Prototype",
+  "description": "Early syntax support for MDsveX files",
+  "version": "0.0.1",
+  "private": true,
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "svx",
+        "aliases": ["SVX", "svx"],
+        "extensions": [".svx"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "svx",
+        "scopeName": "text.html.svx",
+        "path": "./syntaxes/svx.tmLanguage.json"
+      }
+    ]
+  }
+}

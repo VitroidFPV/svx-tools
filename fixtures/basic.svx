@@ -1,0 +1,9 @@
+<script lang="ts">
+  let count = $state(0);
+</script>
+
+# SVX prototype
+
+Markdown **and** a Svelte 5 expression:
+
+<button onclick={() => count++}>Count: {count}</button>

@@ -1,0 +1,27 @@
+{
+  "name": "SVX",
+  "scopeName": "text.html.svx",
+  "patterns": [
+    { "include": "#script" },
+    { "include": "#style" },
+    { "include": "text.html.markdown" }
+  ],
+  "repository": {
+    "script": {
+      "name": "meta.embedded.block.svx.script",
+      "begin": "(<script\\b)([^>]*)(>)",
+      "end": "</script\\s*>",
+      "beginCaptures": { "1": { "name": "entity.name.tag.script.svx" }, "3": { "name": "punctuation.definition.tag.end.svx" } },
+      "endCaptures": { "0": { "name": "entity.name.tag.script.svx" } },
+      "patterns": [{ "include": "source.ts" }, { "include": "source.js" }]
+    },
+    "style": {
+      "name": "meta.embedded.block.svx.style",
+      "begin": "(<style\\b)([^>]*)(>)",
+      "end": "</style\\s*>",
+      "beginCaptures": { "1": { "name": "entity.name.tag.style.svx" }, "3": { "name": "punctuation.definition.tag.end.svx" } },
+      "endCaptures": { "0": { "name": "entity.name.tag.style.svx" } },
+      "patterns": [{ "include": "source.css" }]
+    }
+  }
+}
