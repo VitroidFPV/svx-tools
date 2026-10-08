@@ -16,8 +16,8 @@ bun run typecheck
 ```
 
 Pass another `.svx` file with `bun run probe path/to/file.svx`. The command
-prints the generated Svelte and whether MDsveX supplied a source map. It also
-parses the output with the Svelte compiler, including Svelte 5 syntax.
+prints the generated Svelte, MDsveX data, and whether it supplied a source map.
+It also parses the output with the Svelte compiler, including Svelte 5 syntax.
 
 ## Try the VS Code syntax extension
 
@@ -34,8 +34,16 @@ or formatting.
 
 ## Next experiment
 
-MDsveX currently returns an empty map for the sample file. Before routing
-Svelte language-server diagnostics or edits into SVX, we need a reliable way
-to translate generated positions back to the original document. The probe
-makes this limitation visible. Zed support will also need a grammar that can
-represent Markdown and Svelte syntax in the same file.
+MDsveX 0.12.8 returns `{ code, data, map }`. `data.fm` contains parsed
+frontmatter when present. Its source code currently sets `map: ''` for every
+transformed file; the standalone `compile()` API delegates to the same
+preprocessor. Svelte `preprocess()` consequently returns `map: null`. The
+Svelte compiler can produce a JavaScript source map, but its source content
+is the generated Svelte, not the original SVX.
+
+Before routing Svelte language-server diagnostics or edits into SVX, we need
+a mapping from generated Svelte positions to original SVX positions. A first
+version could map unchanged script and Svelte markup ranges, leaving generated
+Markdown ranges unmapped. Frontmatter, layouts, and plugins need separate
+checks. Zed support will also need a grammar that represents Markdown and
+Svelte syntax in the same file.

@@ -19,6 +19,7 @@ export async function transformSvx(source: string, filename: string) {
 
   return {
     code: result.code,
+    data: result.data ?? {},
     map: result.map || null
   };
 }

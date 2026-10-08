@@ -9,5 +9,6 @@ const result = await transformSvx(source, filename);
 console.log(`Input: ${filename}`);
 console.log(`Generated Svelte parses: yes`);
 console.log(`MDsveX source map: ${result.map ? 'present' : 'unavailable'}`);
+console.log(`MDsveX data: ${JSON.stringify(result.data)}`);
 console.log('\n--- Generated Svelte ---\n');
 console.log(result.code);
