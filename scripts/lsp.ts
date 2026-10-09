@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { fileURLToPath } from 'node:url';
 import {
   createConnection,

@@ -50,16 +50,19 @@ JavaScript script still follow that script's checking settings.
 
 Install dependencies with `bun install` from the repository root. Launch Zed
 from a shell where `bun` is available on `PATH` (for example, `zed .`). Use
-**Extensions → Install Dev Extension** and select `editors/zed`. Open the
-`svx-tools` repository as the worktree, then open `fixtures/error.svx`. The
-file should be recognized as SVX and show the same four errors and one warning.
-After using **Rebuild Extension**, close and reopen the `.svx` file. If the
-diagnostics remain absent, restart Zed; an extension reload can stop the active
-language server without restarting it for an already open file.
+**Extensions → Install Dev Extension** and select `editors/zed`. With this
+repository open, the dev extension runs its local language server; open
+`fixtures/error.svx` to check the diagnostics. After **Rebuild Extension**,
+close and reopen the file. If diagnostics remain absent, restart Zed; an
+extension reload can stop the active language server without restarting it
+for an already open file.
 
-This local prototype launches `scripts/lsp.ts` from the open worktree, so it
-currently works when the worktree is this repository. Zed also needs Rust to
-compile the extension. Install Zed's Svelte extension for highlighting inside
+For normal installations, Zed installs the pinned `svx-tools` server package
+into its own extension storage, with no dependency added to the open project.
+That path requires `svx-tools@0.0.1` to be published to npm. Until then, this
+development build can run its server only with this repository open.
+
+Zed needs Rust to compile the extension. Install Zed's Svelte extension for highlighting inside
 raw Svelte blocks. The SVX grammar also highlights Markdown inline content and
 injects languages into fenced code blocks. Completion, formatting, and broader
 source mapping remain future work for both editors.
