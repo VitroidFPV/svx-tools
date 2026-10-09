@@ -1,0 +1,10 @@
+<script lang="ts">
+  let count = $state(0);
+  cou
+</script>
+
+# Completion fixture
+
+The heading and this Markdown paragraph should not offer Svelte completions.
+
+<button oncl>Count: {count}</button>

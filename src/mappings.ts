@@ -74,6 +74,12 @@ function candidateRanges(source: string): SourceRange[] {
   return ranges;
 }
 
+export function rawSvelteBlockRanges(source: string): SourceRange[] {
+  return candidateRanges(source).filter(({ start, end }) =>
+    /^<(script|style)\b/i.test(source.slice(start, end))
+  );
+}
+
 export function createExactMappings(source: string, generated: string): ExactMapping[] {
   const mappings: ExactMapping[] = [];
 
@@ -123,5 +129,23 @@ export function mapGeneratedRange(
   return {
     start: mapping.sourceStart + start - mapping.generatedStart,
     end: mapping.sourceStart + end - mapping.generatedStart
+  };
+}
+
+export function mapSourceRange(
+  mappings: ExactMapping[],
+  start: number,
+  end: number
+): SourceRange | null {
+  if (start < 0 || end < start) return null;
+
+  const mapping = mappings.find(
+    (candidate) => candidate.sourceStart <= start && end <= candidate.sourceEnd
+  );
+  if (!mapping) return null;
+
+  return {
+    start: mapping.generatedStart + start - mapping.sourceStart,
+    end: mapping.generatedStart + end - mapping.sourceStart
   };
 }

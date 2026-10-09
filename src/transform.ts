@@ -3,7 +3,7 @@ import { mdsvex } from 'mdsvex';
 import { parse } from 'svelte/compiler';
 import { createExactMappings } from './mappings.ts';
 
-export async function transformSvx(source: string, filename: string) {
+export async function transformSvx(source: string, filename: string, options: { validate?: boolean } = {}) {
   const extension = extname(filename);
   const result = await mdsvex({ extensions: [extension] }).markup({
     content: source,
@@ -14,9 +14,8 @@ export async function transformSvx(source: string, filename: string) {
     throw new Error(`MDsveX did not transform ${filename}`);
   }
 
-  // Parse the generated Svelte now; this proves the handoff works without
-  // claiming that generated positions are positions in the original SVX file.
-  parse(result.code, { filename });
+  // Validate complete documents, but allow incomplete syntax during completion.
+  if (options.validate !== false) parse(result.code, { filename });
 
   return {
     code: result.code,

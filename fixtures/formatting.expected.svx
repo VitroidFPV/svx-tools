@@ -1,0 +1,23 @@
+<script lang="ts">
+  const count = $state(0);
+</script>
+
+<style>
+  .counter {
+    color: red;
+  }
+</style>
+
+# Formatting fixture
+
+This paragraph has extra spacing.
+
+```js
+const value = 2;
+```
+
+```svelte
+<script>const  untouched=3</script>
+```
+
+<button onclick={()=>count++}>Count: {count}</button>

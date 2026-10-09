@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'bun:test';
-import { mapGeneratedRange } from '../src/mappings.ts';
+import { mapGeneratedRange, mapSourceRange } from '../src/mappings.ts';
 import { transformSvx } from '../src/transform.ts';
 
 const fixture = new URL('../fixtures/basic.svx', import.meta.url).pathname;
@@ -16,6 +16,10 @@ test('maps unchanged script and raw markup, but not generated Markdown', async (
     assert.deepEqual(mapped, {
       start: source.indexOf(text),
       end: source.indexOf(text) + text.length
+    });
+    assert.deepEqual(mapSourceRange(result.mappings, mapped!.start, mapped!.end), {
+      start,
+      end: start + text.length
     });
   }
 
@@ -51,4 +55,19 @@ test('maps standalone Svelte block directives', async () => {
       end: source.indexOf(text) + text.length
     });
   }
+});
+
+test('completion fixture maps Svelte cursors but leaves Markdown unmapped', async () => {
+  const filename = new URL('../fixtures/completion.svx', import.meta.url).pathname;
+  const source = await readFile(filename, 'utf8');
+  const result = await transformSvx(source, filename, { validate: false });
+
+  for (const prefix of ['  cou', ' oncl']) {
+    const start = source.indexOf(prefix);
+    assert.notEqual(start, -1);
+    const cursor = start + prefix.length;
+    assert.ok(mapSourceRange(result.mappings, cursor, cursor), prefix);
+  }
+  const heading = source.indexOf('Completion fixture');
+  assert.equal(mapSourceRange(result.mappings, heading, heading), null);
 });

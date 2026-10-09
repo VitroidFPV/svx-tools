@@ -6,7 +6,6 @@ and VS Code compatible editors.
 The extensions recognize `.svx` files, highlight their Markdown and embedded
 code, and report diagnostics from Svelte and TypeScript. Diagnostics appear at
 their original locations only when the position can be mapped reliably.
-Completion and formatting are not supported yet.
 
 ## Zed
 
@@ -15,13 +14,21 @@ gallery, you can try it as a development extension:
 
 1. Install Bun and Rust, then run `bun install` and `bun run build:lsp` in this repository.
 2. In Zed, choose **Extensions → Install Dev Extension** and select `editors/zed`.
-3. Open a `.svx` file. `fixtures/error.svx` is a sample with five expected diagnostics.
+3. Open a `.svx` file. `fixtures/error.svx` has five expected diagnostics.
+
+For completion, open `fixtures/completion.svx` and invoke completions after `cou`
+or `oncl`. For formatting, run **Format Document** on `fixtures/formatting.svx`
+and compare it with `fixtures/formatting.expected.svx`.
 
 The extension installs the published `svx-tools` language server into Zed's own
 storage when you open another project. It runs on Zed's managed Node runtime,
 so users do not need Bun or a dependency in each project. With this repository
 open, the development extension uses the local build instead. Install Zed's
 Svelte extension for highlighting in raw Svelte blocks.
+
+The Zed language server offers Svelte and TypeScript completions in unchanged
+raw Svelte regions, plus formatting for Markdown, fenced code, and raw Svelte
+script and style blocks.
 
 ## VS Code compatible editors
 
