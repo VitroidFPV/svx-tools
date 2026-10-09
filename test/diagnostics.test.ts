@@ -46,3 +46,11 @@ test('reports an undefined Svelte handler at its original SVX range', async () =
   );
   assert.equal(fixed.some((item) => item.code === 2304), false);
 });
+
+test('formatting fixture has no TypeScript assignment error', async () => {
+  const fixture = resolve(workspace, 'fixtures/formatting.svx');
+  const source = readFileSync(fixture, 'utf8');
+  const checker = new SvxDiagnostics(workspace);
+  const result = await checker.diagnose(source, fixture);
+  assert.equal(result.some((diagnostic) => diagnostic.code === 2588), false);
+});
