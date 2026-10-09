@@ -1,92 +1,40 @@
-# SVX tools prototype
+# SVX tools
 
-This is an early experiment toward MDsveX language support in VS Code and Zed.
-It checks the MDsveX-to-Svelte handoff and provides basic `.svx` recognition,
-highlighting, and diagnostics for VS Code and compatible editors. A small LSP
-server now exposes diagnostics to Zed.
+Early language support for MDsveX `.svx` files in Zed
+and VS Code compatible editors.
 
-## Run the transformation probe
+The extensions recognize `.svx` files, highlight their Markdown and embedded
+code, and report diagnostics from Svelte and TypeScript. Diagnostics appear at
+their original locations only when the position can be mapped reliably.
+Completion and formatting are not supported yet.
 
-Requires Bun 1.4 or newer.
+## Zed
 
-```sh
-bun install
-bun run probe
-bun test
-bun run typecheck
-```
+The Zed extension is in `editors/zed`. Until it is available in Zed's extension
+gallery, you can try it as a development extension:
 
-Pass another `.svx` file with `bun run probe path/to/file.svx`. The command
-prints the generated Svelte, MDsveX data, source spans, and whether it supplied a source map.
-It also parses the output with the Svelte compiler, including Svelte 5 syntax.
+1. Install Bun and Rust, then run `bun install` and `bun run build:lsp` in this repository.
+2. In Zed, choose **Extensions → Install Dev Extension** and select `editors/zed`.
+3. Open a `.svx` file. `fixtures/error.svx` is a sample with five expected diagnostics.
 
-## Try the VS Code extension
+The extension installs the published `svx-tools` language server into Zed's own
+storage when you open another project. It runs on Zed's managed Node runtime,
+so users do not need Bun or a dependency in each project. With this repository
+open, the development extension uses the local build instead. Install Zed's
+Svelte extension for highlighting in raw Svelte blocks.
 
-Install dependencies and build the extension from the repository root:
+## VS Code compatible editors
 
-```sh
-bun install
-bun run build:vscode
-```
-
-With the VS Code CLI available, launch an Extension Development Host:
+The extension in `editors/vscode` is available for development testing, but
+has not been packaged for an extension marketplace. Run `bun install` and
+`bun run build:vscode`, then launch an Extension Development Host:
 
 ```sh
 code --extensionDevelopmentPath="$(pwd)/editors/vscode" .
 ```
 
-Cursor can use `editors/vscode` as its extension development path. Reload the
-development window after rebuilding. Open `fixtures/error.svx`: it should show
-four errors (a script type mismatch and three missing names) plus an image
-accessibility warning. The diagnostics should point to the original SVX lines.
+## Development
 
-The VS Code extension highlights Markdown and `<script>`/`<style>` blocks.
-Diagnostics come from Svelte's checking API and are shown only when their
-generated ranges map exactly to the SVX source. For files without a script,
-the virtual Svelte document enables JavaScript checking; files with a
-JavaScript script still follow that script's checking settings.
-
-## Try the Zed extension
-
-Install dependencies and build the Node-compatible server from the repository root:
-
-```sh
-bun install
-bun run build:lsp
-```
-
-Use **Extensions → Install Dev Extension** and select `editors/zed`. With this
-repository open, the dev extension runs the locally built language server using
-Zed's managed Node runtime; open `fixtures/error.svx` to check the diagnostics.
-After **Rebuild Extension**,
-close and reopen the file. If diagnostics remain absent, restart Zed; an
-extension reload can stop the active language server without restarting it
-for an already open file.
-
-For normal installations, Zed installs the pinned `svx-tools` server package
-into its own extension storage, with no dependency added to the open project.
-That path requires `svx-tools@0.0.1` to be published to npm. Until then, this
-development build can run its server only with this repository open. Bun is
-needed to build the server, but not to run the installed Zed extension.
-
-Zed needs Rust to compile the extension. Install Zed's Svelte extension for highlighting inside
-raw Svelte blocks. The SVX grammar also highlights Markdown inline content and
-injects languages into fenced code blocks. Completion, formatting, and broader
-source mapping remain future work for both editors.
-
-## Position mapping
-
-MDsveX 0.12.8 returns `{ code, data, map }`. `data.fm` contains parsed
-frontmatter when present. Its source code currently sets `map: ''` for every
-transformed file; the standalone `compile()` API delegates to the same
-preprocessor. Svelte `preprocess()` consequently returns `map: null`. The
-Svelte compiler can produce a JavaScript source map, but its source content
-is the generated Svelte, not the original SVX.
-
-The prototype now finds exact, unique matches for `<script>` and `<style>` blocks whose opening tag is on one line, raw tag lines, and standalone Svelte expressions or block
-directives outside Markdown fences. `mapGeneratedRange` translates an offset range only when it lies entirely within one such span;
-it returns `null` for generated Markdown, frontmatter, changed content, and
-ambiguous matches. These are conservative prototype mappings, not a full
-source map. They use default MDsveX settings; custom plugins and layouts need
-validation before relying on them for editor diagnostics or edits. Zed also
-needs a grammar that represents Markdown and Svelte syntax in the same file.
+Run `bun test` for the focused checks and `bun run typecheck` for TypeScript
+validation. `bun run probe path/to/file.svx` prints the MDsveX transformation
+and source mapping details.
