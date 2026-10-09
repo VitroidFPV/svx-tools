@@ -3,7 +3,7 @@ use std::{env, fs};
 use zed_extension_api as zed;
 
 const PACKAGE_NAME: &str = "svx-tools";
-const PACKAGE_VERSION: &str = "0.0.2";
+const PACKAGE_VERSION: &str = "0.0.3";
 const SERVER_PATH: &str = "node_modules/svx-tools/dist/lsp.cjs";
 
 struct SvxExtension;
