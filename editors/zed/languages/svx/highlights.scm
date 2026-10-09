@@ -20,3 +20,10 @@
 
 (fenced_code_block (info_string (language) @string))
 (indented_code_block) @string
+
+; A standalone closer is an unmatched tag in its Svelte injection. Color its
+; name here while the injection colors the bracket tokens.
+((html_block) @tag.component.type.constructor
+  (#match? @tag.component.type.constructor "^</[A-Z][A-Za-z0-9_.:-]*\\s*>\\s*$"))
+((inline) @tag.component.type.constructor
+  (#match? @tag.component.type.constructor "^</[A-Z][A-Za-z0-9_.:-]*\\s*>\\s*$"))
