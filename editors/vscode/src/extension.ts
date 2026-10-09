@@ -59,6 +59,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const key = document.uri.toString();
       clearTimeout(pending.get(key));
       pending.delete(key);
+      const workspacePath = vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath
+        ?? dirname(document.uri.fsPath);
+      checkers.get(workspacePath)?.close(document.uri.fsPath);
       collection.delete(document.uri);
     })
   );

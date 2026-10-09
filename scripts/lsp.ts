@@ -106,6 +106,7 @@ documents.onDidClose(({ document }) => {
   clearTimeout(pending.get(document.uri));
   pending.delete(document.uri);
   if (document.uri.startsWith('file:')) completions.close(fileURLToPath(document.uri));
+  if (document.uri.startsWith('file:')) checker.close(fileURLToPath(document.uri));
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
 });
 

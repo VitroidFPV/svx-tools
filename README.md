@@ -23,8 +23,25 @@ and compare it with `fixtures/formatting.expected.svx`.
 The extension installs the published `svx-tools` language server into Zed's own
 storage when you open another project. It runs on Zed's managed Node runtime,
 so users do not need Bun or a dependency in each project. With this repository
-open, the development extension uses the local build instead. Install Zed's
-Svelte extension for highlighting in raw Svelte blocks.
+open, the development extension uses the local build instead. To test the local
+build while editing another project, set Zed's `lsp.svx-language-server.binary`
+to your Node executable and the built server:
+
+```json
+{
+  "lsp": {
+    "svx-language-server": {
+      "binary": {
+        "path": "/absolute/path/to/node",
+        "arguments": ["/absolute/path/to/svx-tools/dist/lsp.cjs", "--stdio"]
+      }
+    }
+  }
+}
+```
+
+Rebuilding the Zed extension alone does not update the published server copy in
+Zed's storage. Install Zed's Svelte extension for highlighting in raw Svelte blocks.
 
 The Zed language server offers Svelte and TypeScript completions in unchanged
 raw Svelte regions, plus formatting for Markdown, fenced code, and raw Svelte

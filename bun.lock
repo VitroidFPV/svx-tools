@@ -10,6 +10,7 @@
         "prettier-plugin-svelte": "^3.5.0",
         "svelte": "^5.0.0",
         "svelte-language-server": "^0.18.4",
+        "svelte2tsx": "~0.7.61",
         "typescript": "^6.0.3",
         "vscode-jsonrpc": "^8.2.0",
         "vscode-languageserver": "^10.1.2",

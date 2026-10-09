@@ -54,3 +54,21 @@ test('formatting fixture has no TypeScript assignment error', async () => {
   const result = await checker.diagnose(source, fixture);
   assert.equal(result.some((diagnostic) => diagnostic.code === 2588), false);
 });
+
+test('resolves project aliases and Svelte helpers in a virtual SVX component', async () => {
+  const project = resolve(workspace, 'fixtures/alias');
+  const filename = resolve(project, 'article.svx');
+  const source = '<script lang="ts">\nimport Admonition from "$components/Admonition.svelte";\n</script>\n<Admonition type="tip" />\n';
+  const checker = new SvxDiagnostics(project);
+  const result = await checker.diagnose(source, filename);
+
+  assert.deepEqual(
+    result.filter((item) => [2304, 2307].includes(Number(item.code))).map((item) => item.message),
+    []
+  );
+
+  const invalid = source.replace('type="tip"', 'type="other"');
+  const invalidResult = await checker.diagnose(invalid, filename);
+  assert.ok(invalidResult.some((item) => item.code === 2322 && invalid.slice(item.start, item.end) === 'type'));
+  checker.close(filename);
+});
