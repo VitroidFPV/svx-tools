@@ -1,4 +1,5 @@
 node_modules/
+dist/
 editors/vscode/dist/
 editors/zed/target/
 editors/zed/extension.wasm

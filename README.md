@@ -48,11 +48,17 @@ JavaScript script still follow that script's checking settings.
 
 ## Try the Zed extension
 
-Install dependencies with `bun install` from the repository root. Launch Zed
-from a shell where `bun` is available on `PATH` (for example, `zed .`). Use
-**Extensions → Install Dev Extension** and select `editors/zed`. With this
-repository open, the dev extension runs its local language server; open
-`fixtures/error.svx` to check the diagnostics. After **Rebuild Extension**,
+Install dependencies and build the Node-compatible server from the repository root:
+
+```sh
+bun install
+bun run build:lsp
+```
+
+Use **Extensions → Install Dev Extension** and select `editors/zed`. With this
+repository open, the dev extension runs the locally built language server using
+Zed's managed Node runtime; open `fixtures/error.svx` to check the diagnostics.
+After **Rebuild Extension**,
 close and reopen the file. If diagnostics remain absent, restart Zed; an
 extension reload can stop the active language server without restarting it
 for an already open file.
@@ -60,7 +66,8 @@ for an already open file.
 For normal installations, Zed installs the pinned `svx-tools` server package
 into its own extension storage, with no dependency added to the open project.
 That path requires `svx-tools@0.0.1` to be published to npm. Until then, this
-development build can run its server only with this repository open.
+development build can run its server only with this repository open. Bun is
+needed to build the server, but not to run the installed Zed extension.
 
 Zed needs Rust to compile the extension. Install Zed's Svelte extension for highlighting inside
 raw Svelte blocks. The SVX grammar also highlights Markdown inline content and

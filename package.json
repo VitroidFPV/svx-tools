@@ -3,11 +3,10 @@
   "version": "0.0.1",
   "type": "module",
   "bin": {
-    "svx-language-server": "./scripts/lsp.ts"
+    "svx-language-server": "./dist/lsp.cjs"
   },
   "files": [
-    "src/",
-    "scripts/lsp.ts",
+    "dist/lsp.cjs",
     "README.md",
     "LICENSE"
   ],
@@ -15,6 +14,8 @@
     "probe": "bun scripts/probe.ts",
     "test": "bun test test/*.test.ts",
     "typecheck": "tsc --noEmit",
+    "build:lsp": "bun build scripts/lsp.ts --target=node --format=cjs --packages=external --outfile dist/lsp.cjs",
+    "prepack": "bun run build:lsp",
     "build:vscode": "bun build editors/vscode/src/extension.ts --target=node --format=cjs --external vscode --external svelte-language-server --external mdsvex --external svelte/compiler --outfile editors/vscode/dist/extension.cjs"
   },
   "dependencies": {
