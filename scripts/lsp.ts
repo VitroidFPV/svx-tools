@@ -10,7 +10,7 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { SvxDiagnostics } from '../src/diagnostics.ts';
-import { SvxCompletions } from '../src/completions.ts';
+import { SvxLanguageFeatures } from '../src/language-features.ts';
 import { formatSvx } from '../src/formatting.ts';
 
 const connection = createConnection(ProposedFeatures.all);
@@ -18,16 +18,21 @@ const documents = new TextDocuments(TextDocument);
 const pending = new Map<string, ReturnType<typeof setTimeout>>();
 let workspaceRoot = process.cwd();
 let checker: SvxDiagnostics;
-let completions: SvxCompletions;
+let languageFeatures: SvxLanguageFeatures;
+let definitionLinkSupport = false;
 
 connection.onInitialize((params: InitializeParams) => {
   const rootUri = params.workspaceFolders?.[0]?.uri ?? params.rootUri;
   if (rootUri?.startsWith('file:')) workspaceRoot = fileURLToPath(rootUri);
   checker = new SvxDiagnostics(workspaceRoot);
-  completions = new SvxCompletions(workspaceRoot);
+  languageFeatures = new SvxLanguageFeatures(workspaceRoot);
+  definitionLinkSupport = params.capabilities.textDocument?.definition?.linkSupport ?? false;
   return { capabilities: {
     textDocumentSync: TextDocumentSyncKind.Incremental,
     completionProvider: { triggerCharacters: ['.', '<', ':', '@'] },
+    hoverProvider: true,
+    definitionProvider: true,
+    inlayHintProvider: true,
     documentFormattingProvider: true
   } };
 });
@@ -38,12 +43,51 @@ connection.onCompletion(async ({ textDocument, position }) => {
   const version = document.version;
   try {
     const filename = fileURLToPath(textDocument.uri);
-    const result = await completions.complete(document.getText(), filename, position);
+    const result = await languageFeatures.complete(document.getText(), filename, position);
     const current = documents.get(textDocument.uri);
-    if (!current) completions.close(filename);
+    if (!current) languageFeatures.close(filename);
     return current?.version === version ? result : null;
   } catch (error) {
     connection.console.error(`Failed to complete ${textDocument.uri}: ${String(error)}`);
+    return null;
+  }
+});
+
+connection.onHover(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  if (!document || !textDocument.uri.startsWith('file:')) return null;
+  const version = document.version;
+  try {
+    const result = await languageFeatures.hover(document.getText(), fileURLToPath(textDocument.uri), position);
+    return documents.get(textDocument.uri)?.version === version ? result : null;
+  } catch (error) {
+    connection.console.error(`Failed to hover ${textDocument.uri}: ${String(error)}`);
+    return null;
+  }
+});
+
+connection.onDefinition(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  if (!document || !textDocument.uri.startsWith('file:')) return null;
+  const version = document.version;
+  try {
+    const result = await languageFeatures.definition(document.getText(), fileURLToPath(textDocument.uri), position, definitionLinkSupport);
+    return documents.get(textDocument.uri)?.version === version ? result : null;
+  } catch (error) {
+    connection.console.error(`Failed to find definition ${textDocument.uri}: ${String(error)}`);
+    return null;
+  }
+});
+
+connection.languages.inlayHint.on(async ({ textDocument, range }) => {
+  const document = documents.get(textDocument.uri);
+  if (!document || !textDocument.uri.startsWith('file:')) return null;
+  const version = document.version;
+  try {
+    const result = await languageFeatures.inlayHints(document.getText(), fileURLToPath(textDocument.uri), range);
+    return documents.get(textDocument.uri)?.version === version ? result : null;
+  } catch (error) {
+    connection.console.error(`Failed to find inlay hints ${textDocument.uri}: ${String(error)}`);
     return null;
   }
 });
@@ -105,12 +149,12 @@ documents.onDidChangeContent(({ document }) => schedule(document.uri, 200));
 documents.onDidClose(({ document }) => {
   clearTimeout(pending.get(document.uri));
   pending.delete(document.uri);
-  if (document.uri.startsWith('file:')) completions.close(fileURLToPath(document.uri));
+  if (document.uri.startsWith('file:')) languageFeatures.close(fileURLToPath(document.uri));
   if (document.uri.startsWith('file:')) checker.close(fileURLToPath(document.uri));
   connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
 });
 
-connection.onShutdown(() => completions.dispose());
+connection.onShutdown(() => languageFeatures.dispose());
 
 documents.listen(connection);
 connection.listen();

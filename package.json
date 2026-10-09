@@ -13,6 +13,7 @@
   "scripts": {
     "probe": "bun scripts/probe.ts",
     "test": "bun test test/*.test.ts",
+    "test:features": "node --experimental-strip-types --test test/language-features.node-test.ts",
     "typecheck": "tsc --noEmit",
     "build:lsp": "bun build scripts/lsp.ts --target=node --format=cjs --packages=external --outfile dist/lsp.cjs",
     "prepack": "bun run build:lsp",

@@ -43,9 +43,11 @@ to your Node executable and the built server:
 Rebuilding the Zed extension alone does not update the published server copy in
 Zed's storage. Install Zed's Svelte extension for highlighting in raw Svelte blocks.
 
-The Zed language server offers Svelte and TypeScript completions in unchanged
-raw Svelte regions, plus formatting for Markdown, fenced code, and raw Svelte
-script and style blocks.
+The Zed language server offers Svelte and TypeScript completions, hover types,
+go to definition, and type inlay hints in unchanged raw Svelte regions. Import
+paths also navigate to files resolved through the project's TypeScript aliases.
+Formatting covers Markdown, fenced code, and raw Svelte script and style blocks.
+Enable inlay hints in Zed with `"inlay_hints": { "enabled": true }`.
 
 ## VS Code compatible editors
 
@@ -59,6 +61,7 @@ code --extensionDevelopmentPath="$(pwd)/editors/vscode" .
 
 ## Development
 
-Run `bun test` for the focused checks and `bun run typecheck` for TypeScript
+Run `bun test` for the focused checks, `bun run test:features` for the Node based
+language server integration check, and `bun run typecheck` for TypeScript
 validation. `bun run probe path/to/file.svx` prints the MDsveX transformation
 and source mapping details.
