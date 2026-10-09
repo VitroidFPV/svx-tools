@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { createMessageConnection, type MessageConnection } from 'vscode-jsonrpc/node.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -10,7 +10,7 @@ import type {
   CompletionItem, CompletionList, Hover, InlayHint, Location, LocationLink,
   Position, Range, TextEdit
 } from 'vscode-languageserver/node';
-import { mapGeneratedRange, mapSourceRange, type ExactMapping } from './mappings.ts';
+import { createExactMappings, mapGeneratedRange, mapSourceRange, type ExactMapping } from './mappings.ts';
 import { transformSvx } from './transform.ts';
 
 interface VirtualDocument {
@@ -125,77 +125,108 @@ function mapItem(item: CompletionItem, virtual: VirtualDocument): CompletionItem
   return mapped;
 }
 
-export class SvxLanguageFeatures {
+export interface SvxDiagnostic {
+  start: number;
+  end: number;
+  message: string;
+  severity?: number;
+  source?: string;
+  code?: string | number;
+}
+
+interface DocumentState {
+  source: string;
+  revision: number;
+  virtual?: VirtualDocument;
+  connection?: MessageConnection;
+}
+
+export class SvxLanguageBackend {
   private process?: ChildProcessWithoutNullStreams;
   private connection?: MessageConnection;
   private ready?: Promise<MessageConnection>;
-  private readonly versions = new Map<string, number>();
-  private readonly virtuals = new Map<string, VirtualDocument>();
-  private readonly workspaceRoot: string;
+  private readonly documents = new Map<string, DocumentState>();
   private queue: Promise<unknown> = Promise.resolve();
+  private disposed = false;
+  private readonly onExit = () => this.process?.kill();
 
-  constructor(workspaceRoot: string) {
-    this.workspaceRoot = workspaceRoot;
-  }
+  private readonly workspaceRoot: string;
+
+  constructor(workspaceRoot: string) { this.workspaceRoot = workspaceRoot; }
 
   private start(): Promise<MessageConnection> {
     if (this.ready) return this.ready;
     this.ready = (async () => {
-      const entry = process.argv[1] && !process.argv[1].startsWith('-') ? process.argv[1] : 'package.json';
-      const requireFromEntry = createRequire(resolve(entry));
-      const server = resolve(dirname(requireFromEntry.resolve('svelte-language-server/package.json')), 'bin/server.js');
-      const child = spawn(process.execPath, [server, '--stdio'], { stdio: ['pipe', 'pipe', 'pipe'] });
+      const directory = typeof __dirname === 'string' ? __dirname : dirname(fileURLToPath(import.meta.url));
+      const worker = resolve(directory, 'svelte-worker.cjs');
+      const child = spawn(process.execPath, [...(globalThis.gc ? ['--expose-gc'] : []), worker], {
+        stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+      });
       this.process = child;
-      process.once('exit', () => child.kill());
+      process.once('exit', this.onExit);
       child.stderr.on('data', (data: Buffer) => process.stderr.write(data));
       const stopped = new Promise<never>((_, reject) => {
         child.once('error', reject);
-        child.once('exit', (code) => reject(new Error(`Svelte language server exited with code ${code}`)));
+        child.once('exit', code => reject(new Error(`Svelte backend exited with code ${code}`)));
       });
       const connection = createMessageConnection(child.stdout, child.stdin);
       this.connection = connection;
-      connection.onRequest('client/registerCapability', () => null);
-      connection.onRequest('workspace/configuration', () => []);
+      const reset = () => {
+        connection.dispose();
+        if (this.process !== child) return;
+        this.process = undefined;
+        this.connection = undefined;
+        this.ready = undefined;
+        process.removeListener('exit', this.onExit);
+        for (const state of this.documents.values()) state.connection = undefined;
+      };
+      child.once('exit', reset);
+      child.once('error', reset);
       connection.listen();
-      const rootUri = pathToFileURL(this.workspaceRoot).toString();
-      await Promise.race([connection.sendRequest('initialize', {
-        processId: process.pid,
-        rootUri,
-        workspaceFolders: [{ uri: rootUri, name: 'SVX' }],
-        capabilities: { workspace: { configuration: true } },
-        initializationOptions: { configuration: {
-          typescript: { inlayHints: {
-            variableTypes: { enabled: true },
-            functionLikeReturnTypes: { enabled: true },
-            parameterTypes: { enabled: true },
-            propertyDeclarationTypes: { enabled: true }
-          } },
-          javascript: { inlayHints: {
-            variableTypes: { enabled: true },
-            functionLikeReturnTypes: { enabled: true },
-            parameterTypes: { enabled: true },
-            propertyDeclarationTypes: { enabled: true }
-          } }
-        } }
-      }), stopped]);
-      connection.sendNotification('initialized', {});
+      try {
+        await Promise.race([connection.sendRequest('initialize', { workspaceRoot: this.workspaceRoot }), stopped]);
+      } catch (error) {
+        child.kill();
+        reset();
+        throw error;
+      }
       return connection;
     })();
     return this.ready;
   }
 
+  private request<T>(method: string, params: { textDocument: { uri: string }; position?: Position; range?: Range }): Promise<T> {
+    return this.connection!.sendRequest<T>('operation', {
+      uri: params.textDocument.uri, method: method.slice('textDocument/'.length),
+      position: params.position, range: params.range
+    });
+  }
+
+  diagnose(source: string, filename: string): Promise<SvxDiagnostic[]> {
+    return this.withDocument(source, filename, [], async virtual => {
+      const diagnostics = await this.request<import('vscode-languageserver/node').Diagnostic[]>('textDocument/diagnostics', {
+        textDocument: { uri: virtual.uri }
+      });
+      return diagnostics.flatMap(diagnostic => {
+        const range = mapGeneratedRange(virtual.mappings,
+          virtual.document.offsetAt(diagnostic.range.start), virtual.document.offsetAt(diagnostic.range.end));
+        return range ? [{ ...range, message: typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value, severity: diagnostic.severity,
+          source: diagnostic.source, code: typeof diagnostic.code === 'number' || typeof diagnostic.code === 'string'
+            ? diagnostic.code : undefined }] : [];
+      });
+    });
+  }
+
   complete(source: string, filename: string, position: Position): Promise<CompletionList> {
-    const result = this.enqueue(() => this.runCompletion(source, filename, position));
-    return result;
+    return this.withDocument(source, filename, { isIncomplete: false, items: [] }, virtual => this.runCompletion(virtual, position));
   }
 
   hover(source: string, filename: string, position: Position): Promise<Hover | null> {
-    return this.enqueue(async () => {
-      const virtual = await this.prepare(source, filename);
+    return this.withDocument(source, filename, null, async virtual => {
       const offset = virtual.source.offsetAt(position);
       const mapped = mapSourceRange(virtual.mappings, offset, offset);
       if (!mapped) return null;
-      const hover = await this.connection!.sendRequest<Hover | null>('textDocument/hover', {
+      const hover = await this.request<Hover | null>('textDocument/hover', {
         textDocument: { uri: virtual.uri }, position: virtual.document.positionAt(mapped.start)
       });
       if (!hover) return null;
@@ -205,13 +236,12 @@ export class SvxLanguageFeatures {
   }
 
   definition(source: string, filename: string, position: Position, linkSupport = true): Promise<Location[] | LocationLink[]> {
-    return this.enqueue(async () => {
-      const virtual = await this.prepare(source, filename);
+    return this.withDocument<Location[] | LocationLink[]>(source, filename, [], async virtual => {
       const offset = virtual.source.offsetAt(position);
       const mapped = mapSourceRange(virtual.mappings, offset, offset);
       if (!mapped) return [];
-      const importedPath = importedPathAt(source, offset);
-      const response = await this.connection!.sendRequest<Location | Location[] | LocationLink[] | null>(
+      const importedPath = importedPathAt(virtual.source.getText(), offset);
+      const response = await this.request<Location | Location[] | LocationLink[] | null>(
         'textDocument/definition',
         { textDocument: { uri: virtual.uri }, position: virtual.document.positionAt(mapped.start) }
       );
@@ -245,8 +275,7 @@ export class SvxLanguageFeatures {
   }
 
   inlayHints(source: string, filename: string, range: Range): Promise<InlayHint[]> {
-    return this.enqueue(async () => {
-      const virtual = await this.prepare(source, filename);
+    return this.withDocument(source, filename, [], async virtual => {
       const start = virtual.source.offsetAt(range.start);
       const end = virtual.source.offsetAt(range.end);
       const covered = virtual.mappings.filter((mapping) => mapping.sourceEnd >= start && mapping.sourceStart <= end);
@@ -257,7 +286,7 @@ export class SvxLanguageFeatures {
         start: virtual.document.positionAt(first.generatedStart + Math.max(0, start - first.sourceStart)),
         end: virtual.document.positionAt(last.generatedEnd - Math.max(0, last.sourceEnd - end))
       };
-      const hints = await this.connection!.sendRequest<InlayHint[] | null>('textDocument/inlayHint', {
+      const hints = await this.request<InlayHint[] | null>('textDocument/inlayHint', {
         textDocument: { uri: virtual.uri }, range: virtualRange
       });
       return (hints ?? []).flatMap((hint) => {
@@ -276,47 +305,60 @@ export class SvxLanguageFeatures {
     });
   }
 
+  private withDocument<T>(source: string, filename: string, empty: T, task: (virtual: VirtualDocument) => Promise<T>): Promise<T> {
+    if (this.disposed) return Promise.reject(new Error('SVX backend is disposed'));
+    const path = resolve(filename);
+    let state = this.documents.get(path);
+    if (!state) {
+      state = { source, revision: 0 };
+      this.documents.set(path, state);
+    } else if (state.source !== source) {
+      state.source = source;
+      state.revision++;
+    }
+    const current = state;
+    const revision = state.revision;
+    const valid = () => !this.disposed && this.documents.get(path) === current && current.revision === revision;
+    return this.enqueue(async () => {
+      if (!valid()) return empty;
+      if (!current.virtual || current.virtual.source.getText() !== current.source) {
+        const text = current.source;
+        const transformed = await transformSvx(text, path, { validate: false });
+        if (!valid()) return empty;
+        const code = /<script\b/i.test(transformed.code) ? transformed.code
+          : `<script>// @ts-check\n</script>\n${transformed.code}`;
+        const uri = pathToFileURL(`${path}.svelte`).href;
+        const virtual: VirtualDocument = {
+          uri, source: TextDocument.create(pathToFileURL(path).href, 'svx', revision, text),
+          document: TextDocument.create(uri, 'svelte', revision, code),
+          mappings: code === transformed.code ? transformed.mappings : createExactMappings(text, code)
+        };
+        current.virtual = virtual;
+        current.connection = undefined;
+      }
+      const connection = await this.start();
+      if (!valid()) return empty;
+      if (current.connection !== connection) {
+        await connection.sendRequest('sync', { uri: current.virtual.uri, text: current.virtual.document.getText() });
+        if (!valid()) return empty;
+        current.connection = connection;
+      }
+      const result = await task(current.virtual);
+      return valid() ? result : empty;
+    });
+  }
+
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
     const result = this.queue.then(task);
     this.queue = result.catch(() => undefined);
     return result;
   }
 
-  private async prepare(source: string, filename: string): Promise<VirtualDocument> {
-    const uri = pathToFileURL(`${filename}.svelte`).toString();
-    const cached = this.virtuals.get(uri);
-    if (cached?.source.getText() === source) return cached;
-    const original = TextDocument.create(pathToFileURL(filename).toString(), 'svx', 0, source);
-    const transformed = await transformSvx(source, filename, { validate: false });
-    const version = (this.versions.get(uri) ?? 0) + 1;
-    const virtual: VirtualDocument = {
-      uri,
-      source: original,
-      document: TextDocument.create(uri, 'svelte', version, transformed.code),
-      mappings: transformed.mappings
-    };
-    const connection = await this.start();
-    if (version === 1) {
-      connection.sendNotification('textDocument/didOpen', {
-        textDocument: { uri, languageId: 'svelte', version, text: transformed.code }
-      });
-    } else {
-      connection.sendNotification('textDocument/didChange', {
-        textDocument: { uri, version },
-        contentChanges: [{ text: transformed.code }]
-      });
-    }
-    this.versions.set(uri, version);
-    this.virtuals.set(uri, virtual);
-    return virtual;
-  }
-
-  private async runCompletion(source: string, filename: string, position: Position): Promise<CompletionList> {
-    const virtual = await this.prepare(source, filename);
+  private async runCompletion(virtual: VirtualDocument, position: Position): Promise<CompletionList> {
     const sourceOffset = virtual.source.offsetAt(position);
     const offset = mapSourceRange(virtual.mappings, sourceOffset, sourceOffset);
     if (!offset) return { isIncomplete: false, items: [] };
-    const response = await this.connection!.sendRequest<CompletionList | CompletionItem[] | null>(
+    const response = await this.request<CompletionList | CompletionItem[] | null>(
       'textDocument/completion',
       { textDocument: { uri: virtual.uri }, position: virtual.document.positionAt(offset.start) }
     );
@@ -325,16 +367,43 @@ export class SvxLanguageFeatures {
     return { ...list, items: list.items.map((item) => mapItem(item, virtual)).filter((item): item is CompletionItem => !!item) };
   }
 
-  close(filename: string): void {
-    const uri = pathToFileURL(`${filename}.svelte`).toString();
-    this.virtuals.delete(uri);
-    if (this.versions.delete(uri)) {
-      this.connection?.sendNotification('textDocument/didClose', { textDocument: { uri } });
-    }
+  close(filename: string): Promise<void> {
+    const path = resolve(filename);
+    this.documents.delete(path);
+    return this.enqueue(async () => {
+      await this.connection?.sendRequest('close', { uri: pathToFileURL(`${path}.svelte`).href });
+      // Session-idle policy: release all upstream caches when no documents remain.
+      if (!this.documents.size) await this.stop();
+    });
   }
 
-  dispose(): void {
-    this.connection?.dispose();
-    this.process?.kill();
+  inspect(): Promise<unknown> {
+    return this.enqueue(async () => this.connection
+      ? this.connection.sendRequest('inspect', { gc: !!globalThis.gc }) : { projects: [] });
+  }
+
+  private async stop(): Promise<void> {
+    const child = this.process;
+    const connection = this.connection;
+    this.ready = undefined;
+    this.process = undefined;
+    this.connection = undefined;
+    process.removeListener('exit', this.onExit);
+    if (!child) return;
+    const exited = new Promise<void>(resolve => {
+      if (child.exitCode !== null || child.signalCode !== null) resolve();
+      else child.once('exit', () => resolve());
+    });
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 2000);
+    try { await connection?.sendRequest('shutdown'); } catch { child.kill(); }
+    await exited;
+    clearTimeout(timeout);
+    connection?.dispose();
+  }
+
+  dispose(): Promise<void> {
+    this.disposed = true;
+    this.documents.clear();
+    return this.enqueue(() => this.stop());
   }
 }

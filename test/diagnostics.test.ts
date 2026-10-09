@@ -2,15 +2,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test } from 'bun:test';
-import { SvxDiagnostics } from '../src/diagnostics.ts';
+import { test, afterEach } from 'bun:test';
+import { SvxLanguageBackend } from '../src/language-backend.ts';
 
 const workspace = fileURLToPath(new URL('..', import.meta.url));
 const filename = resolve(workspace, 'fixtures/error.svx');
+const backends: SvxLanguageBackend[] = [];
+afterEach(async () => { await Promise.all(backends.splice(0).map(backend => backend.dispose())); });
+function createBackend(workspace: string) {
+  const backend = new SvxLanguageBackend(workspace);
+  backends.push(backend);
+  return backend;
+}
 
 test('maps the error fixture diagnostics to their original lines', async () => {
   const source = readFileSync(filename, 'utf8');
-  const checker = new SvxDiagnostics(workspace);
+  const checker = createBackend(workspace);
   const result = await checker.diagnose(source, filename);
 
   assert.deepEqual(
@@ -31,7 +38,7 @@ test('maps the error fixture diagnostics to their original lines', async () => {
 
 test('reports an undefined Svelte handler at its original SVX range', async () => {
   const source = '# Introduction\n\n<button onclick={missingHandler}>Click</button>\n';
-  const checker = new SvxDiagnostics(workspace);
+  const checker = createBackend(workspace);
   const syntheticFilename = resolve(workspace, 'fixtures/error-no-script.svx');
   const result = await checker.diagnose(source, syntheticFilename);
   const missing = result.find((item) => item.code === 2304);
@@ -50,7 +57,7 @@ test('reports an undefined Svelte handler at its original SVX range', async () =
 test('formatting fixture has no TypeScript assignment error', async () => {
   const fixture = resolve(workspace, 'fixtures/formatting.svx');
   const source = readFileSync(fixture, 'utf8');
-  const checker = new SvxDiagnostics(workspace);
+  const checker = createBackend(workspace);
   const result = await checker.diagnose(source, fixture);
   assert.equal(result.some((diagnostic) => diagnostic.code === 2588), false);
 });
@@ -59,7 +66,7 @@ test('resolves project aliases and Svelte helpers in a virtual SVX component', a
   const project = resolve(workspace, 'fixtures/alias');
   const filename = resolve(project, 'article.svx');
   const source = '<script lang="ts">\nimport Admonition from "$components/Admonition.svelte";\n</script>\n<Admonition type="tip" />\n';
-  const checker = new SvxDiagnostics(project);
+  const checker = createBackend(project);
   const result = await checker.diagnose(source, filename);
 
   assert.deepEqual(

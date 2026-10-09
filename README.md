@@ -62,6 +62,29 @@ code --extensionDevelopmentPath="$(pwd)/editors/vscode" .
 ## Development
 
 Run `bun test` for the focused checks, `bun run test:features` for the Node based
-language server integration check, and `bun run typecheck` for TypeScript
+backend integration checks, and `bun run typecheck` for TypeScript
 validation. `bun run probe path/to/file.svx` prints the MDsveX transformation
 and source mapping details.
+
+Diagnostics, completion, hover, definitions and inlay hints share one Svelte /
+TypeScript worker per workspace backend. Documents use the nearest tsconfig or
+jsconfig and share its project; a workspace without a config uses one inferred
+project. Closing a document removes its virtual root and mappings. Projects are
+released when their last SVX document closes, and the worker exits when the
+backend becomes idle or is disposed. VS Code deactivation and LSP shutdown await
+disposal. Formatting still uses the existing formatter.
+
+The backend reads project files and installed dependencies without modifying
+them. Generated type shims stay in memory. Vite configuration uses its module
+runner and loads Svelte language options without running the project's build
+pipeline. Configuration code that requires real file writes is blocked.
+Formatting returns edits for the editor to apply when requested.
+
+The worker owns a small lifecycle adaptation to `svelte-language-server` **0.18.4**.
+It checks the version and service-file hash before applying the adaptation in
+memory; it does not modify installed dependencies. Both builds include
+`svelte-worker.cjs` and `read-only-filesystem.cjs`, and npm installations need no
+patch tool or Bun runtime. The config loader is pinned to `@sveltejs/load-config`
+**0.2.3** and hash-checked as well.
+Upgrading this dependency requires updating the adaptation and passing the real
+close/reopen integration tests and clean-package smoke test.
